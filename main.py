@@ -70,6 +70,27 @@ def health():
     return {"status": "ok", "db_path": DB_PATH, "db_exists": os.path.exists(DB_PATH), "time": datetime.now(timezone.utc).isoformat()}
 
 
+@app.get("/debug/env")
+def debug_env(api_key: Optional[str] = None):
+    check_auth(api_key)
+    cwd = os.getcwd()
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    def safe_listdir(p):
+        try:
+            return os.listdir(p)
+        except Exception as e:
+            return [f"error: {e}"]
+    return {
+        "db_path": DB_PATH,
+        "db_exists": os.path.exists(DB_PATH),
+        "cwd": cwd,
+        "cwd_listing": safe_listdir(cwd),
+        "script_dir": script_dir,
+        "script_dir_listing": safe_listdir(script_dir),
+        "root_listing": safe_listdir("/"),
+    }
+
+
 @app.get("/tables")
 def list_tables(api_key: Optional[str] = None):
     check_auth(api_key)
