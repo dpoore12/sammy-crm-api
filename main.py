@@ -70,6 +70,16 @@ def health():
     return {"status": "ok", "db_path": DB_PATH, "time": datetime.now(timezone.utc).isoformat()}
 
 
+@app.get("/debug/env")
+def debug_env():
+    return {
+        "api_key_set": bool(API_KEY),
+        "api_key_length": len(API_KEY) if API_KEY else 0,
+        "api_key_prefix": API_KEY[:6] if API_KEY else None,
+        "db_exists": os.path.exists(DB_PATH),
+    }
+
+
 @app.get("/tables")
 def list_tables(x_api_key: Optional[str] = Header(None)):
     check_auth(x_api_key)
