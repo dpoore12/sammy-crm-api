@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, Header, HTTPException, Query
 from pydantic import BaseModel
 
-DB_PATH = os.environ.get("SAMMY_DB_PATH", os.path.join(os.path.dirname(__file__), "data", "sammy_crm.db"))
+DB_PATH = os.environ.get("SAMMY_DB_PATH", os.path.join(os.path.dirname(__file__), "data.db"))
 API_KEY = os.environ.get("SAMMY_API_KEY")  # must be set in the hosting environment
 
 app = FastAPI(
