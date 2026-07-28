@@ -1,0 +1,209 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Sammy CRM API",
+    "description": "Live read/write access to Dan Poore's recruiting and business-development CRM (Sammy CRM). Use this to look up candidates, buyer companies, contacts, signals, and outreach history, and to create or update records in real time.",
+    "version": "1.1.0"
+  },
+  "servers": [
+    { "url": "https://sammy-crm-api.pplx.app/port/5000" }
+  ],
+  "paths": {
+    "/tables": {
+      "get": {
+        "operationId": "listTables",
+        "summary": "List all available CRM tables",
+        "parameters": [
+          { "name": "api_key", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of table names",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tables": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tables/{table}/schema": {
+      "get": {
+        "operationId": "getTableSchema",
+        "summary": "Get the column names for a CRM table",
+        "parameters": [
+          { "name": "table", "in": "path", "required": true, "schema": { "type": "string" }, "description": "One of: searches, candidates, scores, outreach, buyer_companies, buyer_contacts, buyer_signals, buyer_outreach, mpc_candidates, mpc_outreach" },
+          { "name": "api_key", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Table schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "table": { "type": "string" },
+                    "columns": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tables/{table}/rows": {
+      "get": {
+        "operationId": "getRows",
+        "summary": "Read rows from a CRM table, with optional filtering",
+        "parameters": [
+          { "name": "table", "in": "path", "required": true, "schema": { "type": "string" }, "description": "One of: searches, candidates, scores, outreach, buyer_companies, buyer_contacts, buyer_signals, buyer_outreach, mpc_candidates, mpc_outreach" },
+          { "name": "api_key", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "default": 50, "maximum": 500 } },
+          { "name": "offset", "in": "query", "required": false, "schema": { "type": "integer", "default": 0 } },
+          { "name": "filter_column", "in": "query", "required": false, "schema": { "type": "string" }, "description": "Column name to filter on" },
+          { "name": "filter_value", "in": "query", "required": false, "schema": { "type": "string" }, "description": "Value to filter by" },
+          { "name": "filter_op", "in": "query", "required": false, "schema": { "type": "string", "enum": ["=", "!=", "LIKE", ">", "<", ">=", "<="], "default": "=" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching rows",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "table": { "type": "string" },
+                    "count": { "type": "integer" },
+                    "rows": { "type": "array", "items": { "type": "object" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createRow",
+        "summary": "Create a new row in a CRM table",
+        "parameters": [
+          { "name": "table", "in": "path", "required": true, "schema": { "type": "string" }, "description": "One of: searches, candidates, scores, outreach, buyer_companies, buyer_contacts, buyer_signals, buyer_outreach, mpc_candidates, mpc_outreach" },
+          { "name": "api_key", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "row": {
+                    "type": "object",
+                    "description": "Column name -> value pairs to insert. Primary key and timestamp columns are auto-generated if omitted."
+                  }
+                },
+                "required": ["row"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Row created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "table": { "type": "string" },
+                    "created": { "type": "object" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tables/{table}/rows/{row_id}": {
+      "patch": {
+        "operationId": "updateRow",
+        "summary": "Update an existing row by its primary key",
+        "parameters": [
+          { "name": "table", "in": "path", "required": true, "schema": { "type": "string" }, "description": "One of: searches, candidates, scores, outreach, buyer_companies, buyer_contacts, buyer_signals, buyer_outreach, mpc_candidates, mpc_outreach" },
+          { "name": "row_id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Primary key value of the row to update" },
+          { "name": "api_key", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "row": {
+                    "type": "object",
+                    "description": "Column name -> new value pairs to update"
+                  }
+                },
+                "required": ["row"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Row updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "table": { "type": "string" },
+                    "updated_id": { "type": "string" },
+                    "fields": { "type": "object" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search": {
+      "get": {
+        "operationId": "searchAll",
+        "summary": "Free-text search across CRM tables",
+        "parameters": [
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string", "minLength": 2 }, "description": "Search text, e.g. a company name, contact name, or keyword" },
+          { "name": "api_key", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "tables", "in": "query", "required": false, "schema": { "type": "string" }, "description": "Comma-separated list of tables to search; default all tables" },
+          { "name": "limit_per_table", "in": "query", "required": false, "schema": { "type": "integer", "default": 10, "maximum": 50 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results grouped by table",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "query": { "type": "string" },
+                    "results": { "type": "object" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
