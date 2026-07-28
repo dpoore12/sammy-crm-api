@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi import FastAPI, Header, HTTPException, Query, Request
 from pydantic import BaseModel
 
 DB_PATH = os.environ.get("SAMMY_DB_PATH", os.path.join(os.path.dirname(__file__), "data.db"))
@@ -41,10 +41,11 @@ def get_conn():
     return conn
 
 
-def check_auth(x_api_key: Optional[str]):
+def check_auth(x_api_key: Optional[str] = None, api_key_qs: Optional[str] = None):
     if not API_KEY:
         raise HTTPException(status_code=500, detail="Server misconfigured: SAMMY_API_KEY not set")
-    if x_api_key != API_KEY:
+    supplied = x_api_key or api_key_qs
+    if supplied != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 
@@ -71,18 +72,20 @@ def health():
 
 
 @app.get("/debug/env")
-def debug_env():
+def debug_env(request: Request):
     return {
         "api_key_set": bool(API_KEY),
         "api_key_length": len(API_KEY) if API_KEY else 0,
         "api_key_prefix": API_KEY[:6] if API_KEY else None,
         "db_exists": os.path.exists(DB_PATH),
+        "db_path": DB_PATH,
+        "headers_received": dict(request.headers),
     }
 
 
 @app.get("/tables")
-def list_tables(x_api_key: Optional[str] = Header(None)):
-    check_auth(x_api_key)
+def list_tables(x_api_key: Optional[str] = Header(None), api_key: Optional[str] = None):
+    check_auth(x_api_key, api_key)
     return {"tables": list(ALLOWED_TABLES.keys())}
 
 
