@@ -19,12 +19,16 @@ query and write real, current CRM data in real time — no manual re-uploads, no
 - `PATCH /tables/{table}/rows/{row_id}` — update a row by primary key (`{"row": {...}}`)
 - `GET /search?q=...` — free-text search across all text columns, optionally scoped to specific `tables`
 
-All endpoints except `/health` require header `x-api-key: <SAMMY_API_KEY>`.
+All endpoints except `/health` require the API key as a **query parameter**: `?api_key=<SAMMY_API_KEY>`
+(appended to every request, including POST/PATCH). Query-param auth is used instead of a
+custom header because the hosting proxy strips non-standard request headers before they
+reach the backend — confirmed by testing `x-api-key` header vs. `api_key` query param on
+the live deployment.
 
 ## Environment variables
 
-- `SAMMY_API_KEY` — required. Shared secret the GPT Action must send as `x-api-key`.
-- `SAMMY_DB_PATH` — optional. Defaults to `data/sammy_crm.db` inside the repo.
+- `SAMMY_API_KEY` — required. Shared secret the GPT Action must send as `?api_key=...`.
+- `SAMMY_DB_PATH` — optional. Defaults to `data.db` next to `main.py`.
 
 ## Running locally
 

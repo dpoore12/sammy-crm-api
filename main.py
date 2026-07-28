@@ -1,6 +1,10 @@
 """
 Sammy CRM API — live read/write access to Dan Poore's recruiting/BD SQLite database.
 Built for use as a ChatGPT Custom GPT Action (OpenAPI schema in openapi.json).
+
+Auth: pass the API key as a query parameter `api_key=...` on every request
+(including POST/PATCH). Custom request headers are unreliable through some
+hosting proxies, so query-param auth is the primary, guaranteed-to-work method.
 """
 
 import os
@@ -9,16 +13,16 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, Header, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 
-DB_PATH = os.environ.get("SAMMY_DB_PATH", os.path.join(os.path.dirname(__file__), "data.db"))
+DB_PATH = os.environ.get("SAMMY_DB_PATH", os.path.join(os.path.dirname(os.path.abspath(__file__)), "data.db"))
 API_KEY = os.environ.get("SAMMY_API_KEY")  # must be set in the hosting environment
 
 app = FastAPI(
     title="Sammy CRM API",
     description="Live read/write access to Dan Poore's recruiting and business-development CRM.",
-    version="1.0.0",
+    version="1.1.0",
 )
 
 ALLOWED_TABLES = {
@@ -41,12 +45,11 @@ def get_conn():
     return conn
 
 
-def check_auth(x_api_key: Optional[str] = None, api_key_qs: Optional[str] = None):
+def check_auth(api_key: Optional[str]):
     if not API_KEY:
         raise HTTPException(status_code=500, detail="Server misconfigured: SAMMY_API_KEY not set")
-    supplied = x_api_key or api_key_qs
-    if supplied != API_KEY:
-        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+    if api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key. Pass it as ?api_key=... on every request.")
 
 
 def table_columns(table: str) -> List[str]:
@@ -62,36 +65,20 @@ class RowUpsert(BaseModel):
     row: Dict[str, Any]
 
 
-class QueryRequest(BaseModel):
-    sql: str
-
-
 @app.get("/health")
 def health():
-    return {"status": "ok", "db_path": DB_PATH, "time": datetime.now(timezone.utc).isoformat()}
-
-
-@app.get("/debug/env")
-def debug_env(request: Request):
-    return {
-        "api_key_set": bool(API_KEY),
-        "api_key_length": len(API_KEY) if API_KEY else 0,
-        "api_key_prefix": API_KEY[:6] if API_KEY else None,
-        "db_exists": os.path.exists(DB_PATH),
-        "db_path": DB_PATH,
-        "headers_received": dict(request.headers),
-    }
+    return {"status": "ok", "db_path": DB_PATH, "db_exists": os.path.exists(DB_PATH), "time": datetime.now(timezone.utc).isoformat()}
 
 
 @app.get("/tables")
-def list_tables(x_api_key: Optional[str] = Header(None), api_key: Optional[str] = None):
-    check_auth(x_api_key, api_key)
+def list_tables(api_key: Optional[str] = None):
+    check_auth(api_key)
     return {"tables": list(ALLOWED_TABLES.keys())}
 
 
 @app.get("/tables/{table}/schema")
-def table_schema(table: str, x_api_key: Optional[str] = Header(None)):
-    check_auth(x_api_key)
+def table_schema(table: str, api_key: Optional[str] = None):
+    check_auth(api_key)
     if table not in ALLOWED_TABLES:
         raise HTTPException(status_code=404, detail=f"Unknown table '{table}'")
     return {"table": table, "columns": table_columns(table)}
@@ -100,14 +87,14 @@ def table_schema(table: str, x_api_key: Optional[str] = Header(None)):
 @app.get("/tables/{table}/rows")
 def get_rows(
     table: str,
+    api_key: Optional[str] = None,
     limit: int = Query(50, le=500),
     offset: int = Query(0, ge=0),
     filter_column: Optional[str] = None,
     filter_value: Optional[str] = None,
-    filter_op: str = Query("=", regex="^(=|!=|LIKE|>|<|>=|<=)$"),
-    x_api_key: Optional[str] = Header(None),
+    filter_op: str = Query("=", pattern="^(=|!=|LIKE|>|<|>=|<=)$"),
 ):
-    check_auth(x_api_key)
+    check_auth(api_key)
     if table not in ALLOWED_TABLES:
         raise HTTPException(status_code=404, detail=f"Unknown table '{table}'")
     cols = table_columns(table)
@@ -133,8 +120,8 @@ def get_rows(
 
 
 @app.post("/tables/{table}/rows")
-def create_row(table: str, payload: RowUpsert, x_api_key: Optional[str] = Header(None)):
-    check_auth(x_api_key)
+def create_row(table: str, payload: RowUpsert, api_key: Optional[str] = None):
+    check_auth(api_key)
     if table not in ALLOWED_TABLES:
         raise HTTPException(status_code=404, detail=f"Unknown table '{table}'")
     cols = table_columns(table)
@@ -169,8 +156,8 @@ def create_row(table: str, payload: RowUpsert, x_api_key: Optional[str] = Header
 
 
 @app.patch("/tables/{table}/rows/{row_id}")
-def update_row(table: str, row_id: str, payload: RowUpsert, x_api_key: Optional[str] = Header(None)):
-    check_auth(x_api_key)
+def update_row(table: str, row_id: str, payload: RowUpsert, api_key: Optional[str] = None):
+    check_auth(api_key)
     if table not in ALLOWED_TABLES:
         raise HTTPException(status_code=404, detail=f"Unknown table '{table}'")
     cols = table_columns(table)
@@ -202,12 +189,12 @@ def update_row(table: str, row_id: str, payload: RowUpsert, x_api_key: Optional[
 @app.get("/search")
 def search_all(
     q: str = Query(..., min_length=2),
+    api_key: Optional[str] = None,
     tables: Optional[str] = Query(None, description="Comma-separated list of tables to search; default all"),
     limit_per_table: int = Query(10, le=50),
-    x_api_key: Optional[str] = Header(None),
 ):
     """Free-text search across text columns of the specified tables (or all tables)."""
-    check_auth(x_api_key)
+    check_auth(api_key)
     target_tables = [t.strip() for t in tables.split(",")] if tables else list(ALLOWED_TABLES.keys())
     conn = get_conn()
     results = {}
