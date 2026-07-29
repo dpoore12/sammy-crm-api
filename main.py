@@ -766,6 +766,106 @@ def search_all(
     return {"query": q, "results": results}
 
 
+class BatchLookupRequest(BaseModel):
+    emails: Optional[List[str]] = None
+    names: Optional[List[str]] = None
+    table: str = "buyer_contacts"
+
+
+@app.post("/contacts/batch-lookup")
+def batch_lookup(payload: BatchLookupRequest, request: Request, api_key: Optional[str] = None):
+    """Exact-match bulk lookup for outreach prep -- the cheap-path replacement
+    for looping /search once per person. Pass a list of emails (preferred,
+    exact key) and/or full names, get back every match in ONE call instead of
+    N reasoning-heavy /search calls.
+
+    Matching rules (deterministic, no fuzzy/LLM judgment needed):
+      - email: exact match, case-insensitive -- confidence "exact_email"
+      - name only (no email supplied or no email match): exact case-insensitive
+        full_name match -- confidence "exact_name". If more than one row in
+        the table shares that exact name, ALL are returned with
+        confidence "ambiguous_name" so the caller can disambiguate --
+        never silently guesses a single winner.
+      - no match on either: returned in `not_found` so the caller knows to
+        skip/flag rather than assume.
+
+    This intentionally does zero fuzzy matching (no partial name matching,
+    no typo tolerance) -- that kind of judgment call is exactly the case
+    where a human or an LLM reasoning pass should be looped back in, per
+    the cheap-path rule: only escalate to reasoning when there's genuine
+    ambiguity, never for lookups that have an exact key.
+    """
+    _check_auth(api_key, request)
+    table = payload.table
+    if table not in ALLOWED_TABLES:
+        raise HTTPException(status_code=404, detail=f"Unknown table '{table}'")
+    cols = table_columns(table)
+    name_col = "full_name" if "full_name" in cols else ("name" if "name" in cols else None)
+    email_col = "email" if "email" in cols else None
+
+    emails_norm = [_norm(e) for e in (payload.emails or []) if e]
+    names_norm = [_norm(n) for n in (payload.names or []) if n]
+
+    if not emails_norm and not names_norm:
+        raise HTTPException(status_code=400, detail="Provide at least one of: emails, names")
+
+    # Single paginated fetch of the whole table's relevant columns -- one
+    # network round trip covers every requested person, instead of one
+    # /search call per person.
+    id_col = ALLOWED_TABLES[table]
+    select_fields = ",".join([f for f in [id_col, name_col, email_col, "company_id", "title"] if f and f in cols]) or "*"
+    all_rows = _paginated_fetch(table, select_fields)
+
+    by_email: Dict[str, List[Dict[str, Any]]] = {}
+    by_name: Dict[str, List[Dict[str, Any]]] = {}
+    for r in all_rows:
+        if email_col and r.get(email_col):
+            by_email.setdefault(_norm(r[email_col]), []).append(r)
+        if name_col and r.get(name_col):
+            by_name.setdefault(_norm(r[name_col]), []).append(r)
+
+    matches = []
+    not_found = []
+
+    seen_keys = set()
+    query_keys = [("email", e) for e in emails_norm] + [("name", n) for n in names_norm]
+
+    for kind, key in query_keys:
+        if not key or key in seen_keys:
+            continue
+        seen_keys.add(key)
+
+        if kind == "email":
+            rows = by_email.get(key, [])
+            if len(rows) == 1:
+                matches.append({"query": key, "confidence": "exact_email", "record": rows[0]})
+                continue
+            elif len(rows) > 1:
+                matches.append({"query": key, "confidence": "ambiguous_email", "records": rows})
+                continue
+            else:
+                not_found.append({"query": key, "type": "email"})
+                continue
+
+        if kind == "name":
+            rows = by_name.get(key, [])
+            if len(rows) == 1:
+                matches.append({"query": key, "confidence": "exact_name", "record": rows[0]})
+            elif len(rows) > 1:
+                matches.append({"query": key, "confidence": "ambiguous_name", "records": rows})
+            else:
+                not_found.append({"query": key, "type": "name"})
+
+    return {
+        "table": table,
+        "requested": len(query_keys),
+        "matched": len(matches),
+        "not_found": not_found,
+        "matches": matches,
+    }
+
+
+
 # ---------------------------------------------------------------------------
 # Apollo integration — search, enrich, and import-to-CRM
 # ---------------------------------------------------------------------------
