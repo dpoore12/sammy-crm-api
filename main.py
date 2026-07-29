@@ -42,7 +42,7 @@ import apollo_client
 
 # Local SQLite backend (data.db in this project directory). Migrated off
 # Supabase on 2026-07-28 -- see module docstring and sqlite_backend.py.
-DB_PATH = os.path.join(os.path.dirname(__file__), "data.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "sammy_data_v2.db")
 
 API_KEY = os.environ.get("SAMMY_API_KEY") or "fP60UuK-NJRaFagWiFibmdXC91_WzUNhNq8ym2VhllM"  # falls back to the fixed key already configured in the Sammy GPT Action if the env var isn't set by the hosting environment
 
@@ -270,12 +270,20 @@ def _require_table(table: str) -> str:
 
 @app.get("/health")
 def health():
-    configured = bool(SUPABASE_KEY)
+    db_exists = os.path.exists(DB_PATH)
+    db_mtime = None
+    db_size = None
+    if db_exists:
+        st = os.stat(DB_PATH)
+        db_mtime = datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat()
+        db_size = st.st_size
     return {
         "status": "ok",
-        "backend": "supabase",
-        "supabase_url": SUPABASE_URL,
-        "supabase_key_configured": configured,
+        "backend": "sqlite",
+        "db_path": DB_PATH,
+        "db_exists": db_exists,
+        "db_mtime": db_mtime,
+        "db_size_bytes": db_size,
         "time": datetime.now(timezone.utc).isoformat(),
     }
 

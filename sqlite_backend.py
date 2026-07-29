@@ -32,7 +32,7 @@ import sqlite3
 import threading
 from typing import Any, Dict, List, Optional, Tuple
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "data.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "sammy_data_v2.db")
 
 _local = threading.local()
 
