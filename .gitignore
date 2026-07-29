@@ -3,3 +3,5 @@ __pycache__/
 .env
 server.log
 *.db-journal
+*.db-shm
+*.db-wal
