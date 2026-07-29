@@ -708,6 +708,25 @@ def update_row(
     return {"table": table, "updated_id": row_id, "fields": row}
 
 
+@app.delete("/tables/{table}/rows/{row_id}")
+def delete_row(
+    request: Request,
+    table: str,
+    row_id: str,
+    api_key: Optional[str] = None,
+):
+    _check_auth(api_key, request)
+    pk = _require_table(table)
+    try:
+        check = _supabase_request("GET", table, params={pk: f"eq.{row_id}", "select": pk})
+        if not check:
+            raise HTTPException(status_code=404, detail=f"No row found in '{table}' with {pk} = '{row_id}'")
+        _supabase_request("DELETE", table, params={pk: f"eq.{row_id}"})
+    except SupabaseError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+    return {"table": table, "deleted_id": row_id}
+
+
 @app.get("/search")
 def search_all(
     request: Request,
