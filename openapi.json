@@ -3,19 +3,19 @@
   "info": {
     "title": "Sammy CRM API",
     "description": "Live read/write access to Dan Poore's recruiting and business-development CRM (Sammy CRM). Use this to look up candidates, buyer companies, contacts, signals, and outreach history, and to create or update records in real time.",
-    "version": "1.1.0"
+    "version": "1.7.2"
   },
   "servers": [
-    { "url": "https://sammy-crm-api.pplx.app/port/5000" }
+    {
+      "url": "https://sammy-crm-api.pplx.app/port/5000"
+    }
   ],
   "paths": {
     "/tables": {
       "get": {
         "operationId": "listTables",
         "summary": "List all available CRM tables",
-        "parameters": [
-          { "name": "api_key", "in": "query", "required": true, "schema": { "type": "string" } }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": "List of table names",
@@ -24,7 +24,46 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "tables": { "type": "array", "items": { "type": "string" } }
+                    "tables": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/summary": {
+      "get": {
+        "operationId": "getSummary",
+        "summary": "Get exact total row counts for every CRM table in one call. Always use this first for any counting/overview question (how many records, candidates, contacts, companies) \u2014 do not loop through listTables + getRows, that is slow and page-limited.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Exact row counts per table",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tables": {
+                      "type": "object",
+                      "description": "table name -> exact row count",
+                      "additionalProperties": {
+                        "type": "integer"
+                      }
+                    },
+                    "total_rows": {
+                      "type": "integer"
+                    },
+                    "note": {
+                      "type": "string"
+                    }
                   }
                 }
               }
@@ -38,8 +77,15 @@
         "operationId": "getTableSchema",
         "summary": "Get the column names for a CRM table",
         "parameters": [
-          { "name": "table", "in": "path", "required": true, "schema": { "type": "string" }, "description": "One of: searches, candidates, scores, outreach, buyer_companies, buyer_contacts, buyer_signals, buyer_outreach, mpc_candidates, mpc_outreach" },
-          { "name": "api_key", "in": "query", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "table",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One of: searches, candidates, scores, outreach, buyer_companies, buyer_contacts, buyer_signals, buyer_outreach, mpc_candidates, mpc_outreach"
+          }
         ],
         "responses": {
           "200": {
@@ -49,8 +95,15 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "table": { "type": "string" },
-                    "columns": { "type": "array", "items": { "type": "string" } }
+                    "table": {
+                      "type": "string"
+                    },
+                    "columns": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
                   }
                 }
               }
@@ -64,13 +117,70 @@
         "operationId": "getRows",
         "summary": "Read rows from a CRM table, with optional filtering",
         "parameters": [
-          { "name": "table", "in": "path", "required": true, "schema": { "type": "string" }, "description": "One of: searches, candidates, scores, outreach, buyer_companies, buyer_contacts, buyer_signals, buyer_outreach, mpc_candidates, mpc_outreach" },
-          { "name": "api_key", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "default": 50, "maximum": 500 } },
-          { "name": "offset", "in": "query", "required": false, "schema": { "type": "integer", "default": 0 } },
-          { "name": "filter_column", "in": "query", "required": false, "schema": { "type": "string" }, "description": "Column name to filter on" },
-          { "name": "filter_value", "in": "query", "required": false, "schema": { "type": "string" }, "description": "Value to filter by" },
-          { "name": "filter_op", "in": "query", "required": false, "schema": { "type": "string", "enum": ["=", "!=", "LIKE", ">", "<", ">=", "<="], "default": "=" } }
+          {
+            "name": "table",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One of: searches, candidates, scores, outreach, buyer_companies, buyer_contacts, buyer_signals, buyer_outreach, mpc_candidates, mpc_outreach"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "maximum": 500
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          },
+          {
+            "name": "filter_column",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Column name to filter on"
+          },
+          {
+            "name": "filter_value",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Value to filter by"
+          },
+          {
+            "name": "filter_op",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "=",
+                "!=",
+                "LIKE",
+                ">",
+                "<",
+                ">=",
+                "<="
+              ],
+              "default": "="
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -80,9 +190,20 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "table": { "type": "string" },
-                    "count": { "type": "integer" },
-                    "rows": { "type": "array", "items": { "type": "object" } }
+                    "table": {
+                      "type": "string"
+                    },
+                    "count": {
+                      "type": "integer"
+                    },
+                    "rows": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "description": "Column name -> value pairs",
+                        "additionalProperties": true
+                      }
+                    }
                   }
                 }
               }
@@ -92,10 +213,17 @@
       },
       "post": {
         "operationId": "createRow",
-        "summary": "Create a new row in a CRM table",
+        "summary": "Create a new row in a CRM table. For buyer_contacts and buyer_companies, pass the named fields directly on 'row' (company_id, name, title, email, linkedin_url, etc.) so the request body is fully explicit \u2014 do not guess field names for other tables, call getTableSchema first.",
         "parameters": [
-          { "name": "table", "in": "path", "required": true, "schema": { "type": "string" }, "description": "One of: searches, candidates, scores, outreach, buyer_companies, buyer_contacts, buyer_signals, buyer_outreach, mpc_candidates, mpc_outreach" },
-          { "name": "api_key", "in": "query", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "table",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One of: searches, candidates, scores, outreach, buyer_companies, buyer_contacts, buyer_signals, buyer_outreach, mpc_candidates, mpc_outreach"
+          }
         ],
         "requestBody": {
           "required": true,
@@ -106,10 +234,179 @@
                 "properties": {
                   "row": {
                     "type": "object",
-                    "description": "Column name -> value pairs to insert. Primary key and timestamp columns are auto-generated if omitted."
+                    "description": "Column name -> value pairs for the new row. Explicit named fields are listed below for buyer_contacts and buyer_companies (the two tables used for CSV/Apollo imports); other tables accept any column name as an additional property \u2014 call getTableSchema first to see valid column names for those.",
+                    "properties": {
+                      "company_id": {
+                        "type": "string",
+                        "description": "buyer_contacts ONLY: the buyer_companies.company_id this contact belongs to (required, must already exist \u2014 create the company first with a POST to /tables/buyer_companies/rows if it doesn't exist yet, then read back its generated company_id). Do not set this field when table=buyer_companies \u2014 company_id is auto-generated by the database."
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "buyer_contacts ONLY: full name of the contact. For buyer_companies use company_name instead, not name."
+                      },
+                      "title": {
+                        "type": "string",
+                        "description": "buyer_contacts ONLY: the contact's job title."
+                      },
+                      "what_they_run": {
+                        "type": "string",
+                        "description": "buyer_contacts ONLY: short note on the function/team/product this person runs or owns."
+                      },
+                      "phone": {
+                        "type": "string",
+                        "description": "buyer_contacts ONLY: phone number, if known. For buyer_companies use the separate 'phone' column at the company level (same field name, company's main phone)."
+                      },
+                      "email": {
+                        "type": "string",
+                        "description": "buyer_contacts ONLY: contact's email address."
+                      },
+                      "email_status": {
+                        "type": "string",
+                        "description": "buyer_contacts ONLY: verification status of the email, e.g. 'verified', 'guessed', 'unverified'."
+                      },
+                      "linkedin_url": {
+                        "type": "string",
+                        "description": "buyer_contacts ONLY: full LinkedIn profile URL for the contact. buyer_companies does not have a linkedin_url column."
+                      },
+                      "contact_category": {
+                        "type": "string",
+                        "description": "buyer_contacts ONLY: category/segment for this contact, e.g. 'founder', 'exec', 'leader'."
+                      },
+                      "matches_buyer_persona": {
+                        "type": "boolean",
+                        "description": "buyer_contacts ONLY: whether this contact matches Dan's target buyer persona. buyer_companies has a separate matches_firm_profile boolean instead."
+                      },
+                      "hire_or_event_date": {
+                        "type": "string",
+                        "description": "buyer_contacts ONLY: date of a relevant hiring signal or trigger event tied to this contact, ISO 8601 format."
+                      },
+                      "status_note": {
+                        "type": "string",
+                        "description": "buyer_contacts ONLY: free-text status or context note about this contact."
+                      },
+                      "source": {
+                        "type": "string",
+                        "description": "buyer_contacts and buyer_companies: where this record came from, e.g. 'apollo_csv_import', 'manual', a search name."
+                      },
+                      "first_seen_date": {
+                        "type": "string",
+                        "description": "buyer_contacts and buyer_companies: ISO 8601 timestamp when first added. Leave unset to default to now."
+                      },
+                      "last_updated": {
+                        "type": "string",
+                        "description": "buyer_contacts and buyer_companies: ISO 8601 timestamp of last update. Leave unset to default to now."
+                      },
+                      "phone_dnc_status": {
+                        "type": "string",
+                        "description": "buyer_contacts ONLY: Do-Not-Call registry status for the phone number, if known."
+                      },
+                      "company_name": {
+                        "type": "string",
+                        "description": "buyer_companies ONLY (required): the company's name. This is the field to use for the company name \u2014 buyer_companies has no 'name' column."
+                      },
+                      "normalized_name": {
+                        "type": "string",
+                        "description": "buyer_companies ONLY: lowercased/normalized version of company_name, used for deduplication matching."
+                      },
+                      "entity_type": {
+                        "type": "string",
+                        "description": "buyer_companies ONLY: type of entity, e.g. 'MGA', 'startup', 'carrier'."
+                      },
+                      "hq_city": {
+                        "type": "string",
+                        "description": "buyer_companies ONLY: headquarters city."
+                      },
+                      "hq_state": {
+                        "type": "string",
+                        "description": "buyer_companies ONLY: headquarters state."
+                      },
+                      "key_specialties": {
+                        "type": "string",
+                        "description": "buyer_companies ONLY: notable specialties or focus areas."
+                      },
+                      "est_premium_volume_m": {
+                        "type": "number",
+                        "description": "buyer_companies ONLY: estimated premium volume in millions (insurance-sector companies)."
+                      },
+                      "employee_count_range": {
+                        "type": "string",
+                        "description": "buyer_companies ONLY: employee headcount range, e.g. '50-250'."
+                      },
+                      "carrier_partners": {
+                        "type": "string",
+                        "description": "buyer_companies ONLY: notable carrier partners (insurance-sector companies)."
+                      },
+                      "website": {
+                        "type": "string",
+                        "description": "buyer_companies ONLY: company website URL."
+                      },
+                      "year_founded": {
+                        "type": "integer",
+                        "description": "buyer_companies ONLY: year the company was founded."
+                      },
+                      "ranking_tier": {
+                        "type": "string",
+                        "description": "buyer_companies ONLY: Dan's internal ranking tier for this company as a target."
+                      },
+                      "ownership": {
+                        "type": "string",
+                        "description": "buyer_companies ONLY: ownership structure, e.g. 'PE-backed', 'VC-backed', 'family-owned', 'public'."
+                      },
+                      "notes_recognition": {
+                        "type": "string",
+                        "description": "buyer_companies ONLY: free-text notes or notable recognition/awards."
+                      },
+                      "priority_score": {
+                        "type": "number",
+                        "description": "buyer_companies ONLY: Dan's computed priority/lead score for this company."
+                      },
+                      "pv_fit": {
+                        "type": "string",
+                        "description": "buyer_companies ONLY: premium-volume fit assessment."
+                      },
+                      "specialty_fit": {
+                        "type": "string",
+                        "description": "buyer_companies ONLY: specialty fit assessment against Dan's target criteria."
+                      },
+                      "growth_signal": {
+                        "type": "string",
+                        "description": "buyer_companies ONLY: notable growth signal, e.g. funding, hiring surge, expansion."
+                      },
+                      "entity_fit": {
+                        "type": "string",
+                        "description": "buyer_companies ONLY: entity-type fit assessment."
+                      },
+                      "state_density": {
+                        "type": "string",
+                        "description": "buyer_companies ONLY: state/geographic density note."
+                      },
+                      "outreach_tier": {
+                        "type": "string",
+                        "description": "buyer_companies ONLY: outreach prioritization tier."
+                      },
+                      "batch_number": {
+                        "type": "integer",
+                        "description": "buyer_companies ONLY: the outreach batch number this company was added under."
+                      },
+                      "internal_ta_footprint": {
+                        "type": "string",
+                        "description": "buyer_companies ONLY: notes on the company's internal talent-acquisition footprint/team."
+                      },
+                      "matches_firm_profile": {
+                        "type": "boolean",
+                        "description": "buyer_companies ONLY: whether this company matches Dan's target firm profile."
+                      },
+                      "firm_profile_notes": {
+                        "type": "string",
+                        "description": "buyer_companies ONLY: free-text notes on firm-profile fit."
+                      }
+                    },
+                    "additionalProperties": true
                   }
                 },
-                "required": ["row"]
+                "required": [
+                  "row"
+                ]
               }
             }
           }
@@ -122,8 +419,29 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "table": { "type": "string" },
-                    "created": { "type": "object" }
+                    "table": {
+                      "type": "string"
+                    },
+                    "created": {
+                      "type": "object",
+                      "description": "Column name -> value pairs",
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid request body \u2014 no row was created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "detail": {
+                      "type": "string"
+                    }
                   }
                 }
               }
@@ -137,9 +455,24 @@
         "operationId": "updateRow",
         "summary": "Update an existing row by its primary key",
         "parameters": [
-          { "name": "table", "in": "path", "required": true, "schema": { "type": "string" }, "description": "One of: searches, candidates, scores, outreach, buyer_companies, buyer_contacts, buyer_signals, buyer_outreach, mpc_candidates, mpc_outreach" },
-          { "name": "row_id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Primary key value of the row to update" },
-          { "name": "api_key", "in": "query", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "table",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One of: searches, candidates, scores, outreach, buyer_companies, buyer_contacts, buyer_signals, buyer_outreach, mpc_candidates, mpc_outreach"
+          },
+          {
+            "name": "row_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Primary key value of the row to update"
+          }
         ],
         "requestBody": {
           "required": true,
@@ -150,10 +483,13 @@
                 "properties": {
                   "row": {
                     "type": "object",
-                    "description": "Column name -> new value pairs to update"
+                    "description": "Column name -> value pairs",
+                    "additionalProperties": true
                   }
                 },
-                "required": ["row"]
+                "required": [
+                  "row"
+                ]
               }
             }
           }
@@ -166,9 +502,17 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "table": { "type": "string" },
-                    "updated_id": { "type": "string" },
-                    "fields": { "type": "object" }
+                    "table": {
+                      "type": "string"
+                    },
+                    "updated_id": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "description": "Column name -> value pairs",
+                      "additionalProperties": true
+                    }
                   }
                 }
               }
@@ -182,10 +526,35 @@
         "operationId": "searchAll",
         "summary": "Free-text search across CRM tables",
         "parameters": [
-          { "name": "q", "in": "query", "required": true, "schema": { "type": "string", "minLength": 2 }, "description": "Search text, e.g. a company name, contact name, or keyword" },
-          { "name": "api_key", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "tables", "in": "query", "required": false, "schema": { "type": "string" }, "description": "Comma-separated list of tables to search; default all tables" },
-          { "name": "limit_per_table", "in": "query", "required": false, "schema": { "type": "integer", "default": 10, "maximum": 50 } }
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2
+            },
+            "description": "Search text, e.g. a company name, contact name, or keyword"
+          },
+          {
+            "name": "tables",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated list of tables to search; default all tables"
+          },
+          {
+            "name": "limit_per_table",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "maximum": 50
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -195,8 +564,14 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "query": { "type": "string" },
-                    "results": { "type": "object" }
+                    "query": {
+                      "type": "string"
+                    },
+                    "results": {
+                      "type": "object",
+                      "description": "table name -> array of matching rows",
+                      "additionalProperties": true
+                    }
                   }
                 }
               }
@@ -204,6 +579,734 @@
           }
         }
       }
+    },
+    "/apollo/search-people": {
+      "post": {
+        "operationId": "apolloSearchPeople",
+        "summary": "Search Apollo's people database by title, org domain, headcount, location, or industry. Flags results already in Sammy CRM.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "person_titles": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Job titles to match, e.g. ['Chief Underwriting Officer']"
+                  },
+                  "q_keywords": {
+                    "type": "string",
+                    "description": "Free-text keyword search"
+                  },
+                  "organization_domains": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "organization_num_employees_ranges": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "e.g. ['101,500']"
+                  },
+                  "person_locations": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "industries": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "page": {
+                    "type": "integer",
+                    "default": 1
+                  },
+                  "per_page": {
+                    "type": "integer",
+                    "default": 10
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Matching people from Apollo, each flagged with already_in_crm",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total_entries": {
+                      "type": "integer"
+                    },
+                    "count_returned": {
+                      "type": "integer"
+                    },
+                    "people": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "first_name": {
+                            "type": "string"
+                          },
+                          "last_name": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "email": {
+                            "type": "string"
+                          },
+                          "linkedin_url": {
+                            "type": "string"
+                          },
+                          "organization_name": {
+                            "type": "string"
+                          },
+                          "organization_domain": {
+                            "type": "string"
+                          },
+                          "already_in_crm": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/apollo/search-companies": {
+      "post": {
+        "operationId": "apolloSearchCompanies",
+        "summary": "Search Apollo's company database by headcount, location, industry, or keyword. Flags results already in Sammy CRM.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "q_keywords": {
+                    "type": "string"
+                  },
+                  "organization_num_employees_ranges": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "e.g. ['101,500']"
+                  },
+                  "organization_locations": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "industries": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "page": {
+                    "type": "integer",
+                    "default": 1
+                  },
+                  "per_page": {
+                    "type": "integer",
+                    "default": 10
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Matching companies from Apollo, each flagged with already_in_crm",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total_entries": {
+                      "type": "integer"
+                    },
+                    "count_returned": {
+                      "type": "integer"
+                    },
+                    "companies": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "website_url": {
+                            "type": "string"
+                          },
+                          "linkedin_url": {
+                            "type": "string"
+                          },
+                          "industry": {
+                            "type": "string"
+                          },
+                          "estimated_num_employees": {
+                            "type": "integer"
+                          },
+                          "city": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "type": "string"
+                          },
+                          "founded_year": {
+                            "type": "integer"
+                          },
+                          "phone": {
+                            "type": "string"
+                          },
+                          "already_in_crm": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/apollo/enrich-person": {
+      "post": {
+        "operationId": "apolloEnrichPerson",
+        "summary": "Enrich a single person via Apollo (by name+company, domain, LinkedIn URL, or email) to get verified email, title, org info.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "first_name": {
+                    "type": "string"
+                  },
+                  "last_name": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "organization_name": {
+                    "type": "string"
+                  },
+                  "domain": {
+                    "type": "string"
+                  },
+                  "linkedin_url": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Enriched person record from Apollo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "person": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "first_name": {
+                          "type": "string"
+                        },
+                        "last_name": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "linkedin_url": {
+                          "type": "string"
+                        },
+                        "organization_name": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/apollo/enrich-company": {
+      "post": {
+        "operationId": "apolloEnrichCompany",
+        "summary": "Enrich a single company via Apollo by domain, returning firmographic details.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "domain": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "domain"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Enriched company record from Apollo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "organization": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "website_url": {
+                          "type": "string"
+                        },
+                        "linkedin_url": {
+                          "type": "string"
+                        },
+                        "industry": {
+                          "type": "string"
+                        },
+                        "estimated_num_employees": {
+                          "type": "integer"
+                        },
+                        "founded_year": {
+                          "type": "integer"
+                        },
+                        "phone": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/apollo/import-to-crm": {
+      "post": {
+        "operationId": "apolloImportToCrm",
+        "summary": "Save Apollo results into Sammy CRM, MAX 25 PER CALL. Skips items already present. target_table: buyer_contacts, candidates, or buyer_companies. For more than 25, call repeatedly in chunks of <=25.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "target_table": {
+                    "type": "string",
+                    "enum": [
+                      "buyer_contacts",
+                      "candidates",
+                      "buyer_companies"
+                    ]
+                  },
+                  "people": {
+                    "type": "array",
+                    "description": "REQUIRED when target_table is buyer_contacts or candidates. MAX 25 PER CALL (server rejects more). One object per person, built directly from the results returned by apolloSearchPeople (or apolloEnrichPerson). Do not leave this empty or omit it -- copy the actual people you want imported from the prior search/enrich response into this array explicitly. For more than 25 people, split into consecutive chunks of <=25 and call this action once per chunk across separate messages. Check the response's 'remaining_hint' field after each call: if it is non-null, immediately continue with the next chunk rather than stopping or asking the user what to do next. Resending an already-imported chunk is always safe -- duplicates are skipped.",
+                    "items": {
+                      "type": "object",
+                      "description": "One person to import. Copy name/email/title/linkedin_url/organization_name directly from the apolloSearchPeople or apolloEnrichPerson result for this person.",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "Full name of the person"
+                        },
+                        "first_name": {
+                          "type": "string",
+                          "description": "First name, used to build name if name is not provided"
+                        },
+                        "last_name": {
+                          "type": "string",
+                          "description": "Last name, used to build name if name is not provided"
+                        },
+                        "title": {
+                          "type": "string",
+                          "description": "Job title, e.g. Founder & CEO"
+                        },
+                        "email": {
+                          "type": "string",
+                          "description": "Email address, used to detect and skip duplicates"
+                        },
+                        "linkedin_url": {
+                          "type": "string",
+                          "description": "LinkedIn profile URL"
+                        },
+                        "organization_name": {
+                          "type": "string",
+                          "description": "Company name the person works at. REQUIRED in practice for buyer_contacts/candidates -- buyer_contacts.company_id is a required foreign key, and this is auto-resolved or auto-created from organization_name. Omitting it will cause that person to be skipped."
+                        }
+                      },
+                      "additionalProperties": true
+                    },
+                    "maxItems": 25
+                  },
+                  "companies": {
+                    "type": "array",
+                    "description": "REQUIRED when target_table is buyer_companies. One object per company to import, built directly from the results returned by apolloSearchCompanies. Do not leave this empty or omit it -- copy the actual companies you want imported from the prior search response into this array explicitly. MAX 25 PER CALL (server rejects more). For more than 25 companies, split into chunks of <=25 and call once per chunk, checking 'remaining_hint' in the response to know whether to continue.",
+                    "items": {
+                      "type": "object",
+                      "description": "One company to import. Copy fields directly from the apolloSearchCompanies result for this company.",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "Company name"
+                        },
+                        "website_url": {
+                          "type": "string",
+                          "description": "Company website URL"
+                        },
+                        "city": {
+                          "type": "string",
+                          "description": "HQ city"
+                        },
+                        "state": {
+                          "type": "string",
+                          "description": "HQ state"
+                        },
+                        "founded_year": {
+                          "type": "integer",
+                          "description": "Year founded"
+                        }
+                      },
+                      "additionalProperties": true
+                    },
+                    "maxItems": 25
+                  },
+                  "source_label": {
+                    "type": "string",
+                    "default": "apollo_import"
+                  }
+                },
+                "required": [
+                  "target_table"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Import result with created and skipped records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "created_count": {
+                      "type": "integer"
+                    },
+                    "skipped_count": {
+                      "type": "integer"
+                    },
+                    "created": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "description": "Column name -> value pairs",
+                        "additionalProperties": true
+                      }
+                    },
+                    "skipped": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "description": "Column name -> value pairs",
+                        "additionalProperties": true
+                      }
+                    },
+                    "remaining_hint": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Non-null when this call was sent at the 25-item cap, meaning your import likely has more rows left. When non-null, immediately send the next chunk of up to 25 in a new call -- do not stop, and do not ask the user for permission to continue."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contacts/add": {
+      "post": {
+        "operationId": "addContact",
+        "summary": "Add ONE contact to buyer_contacts using flat fields (no nested objects): name, title, company, email, linkedin_url, phone. Auto-resolves or creates the company by name. Skips if the email already exists.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "company"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Full name of the contact, e.g. 'Jane Smith'. Required (or supply first_name/last_name instead)."
+                  },
+                  "first_name": {
+                    "type": "string",
+                    "description": "Alternative to name: first name only."
+                  },
+                  "last_name": {
+                    "type": "string",
+                    "description": "Alternative to name: last name only."
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Job title, e.g. 'Founder & CEO'."
+                  },
+                  "company": {
+                    "type": "string",
+                    "description": "Company name, e.g. 'Bear Robotics'. Required. Used to find or create the matching buyer_companies row automatically."
+                  },
+                  "email": {
+                    "type": "string",
+                    "description": "Contact's email address, if known."
+                  },
+                  "linkedin_url": {
+                    "type": "string",
+                    "description": "Contact's LinkedIn profile URL, if known."
+                  },
+                  "phone": {
+                    "type": "string",
+                    "description": "Contact's phone number, if known."
+                  },
+                  "source": {
+                    "type": "string",
+                    "description": "Where this contact came from, e.g. 'apollo_import', 'csv_import'. Defaults to 'gpt_add_contact'."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contact created, or skipped if the email already exists in the CRM.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "description": "'created' or 'skipped'"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "contact": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing required field (name or company)."
+          }
+        }
+      }
+    },
+    "/contacts/add-batch": {
+      "post": {
+        "operationId": "addContactsBatch",
+        "summary": "Import contacts, MAX 25 PER CALL (server rejects more). For bigger imports, call repeatedly with chunks of <=25 in separate messages. Companies auto-resolve by name; duplicate emails are skipped safely.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "contacts"
+                ],
+                "properties": {
+                  "contacts": {
+                    "type": "array",
+                    "description": "One object per contact, MAX 25 PER CALL (server returns 400 if you send more). Each needs at minimum a name (or first_name/last_name) and a company. Optional: title, email, linkedin_url, phone, source. IMPORTANT FOR LARGE IMPORTS (CSV or Apollo results with more than 25 rows): split the full list into consecutive chunks of at most 25 contacts each, and call this action ONCE PER CHUNK across separate messages -- never try to build one call with more than 25 items, and never try to process a large import inside a single reply. After each call, check the response's 'remaining_hint' field: if it is non-null, immediately continue with the next chunk of up to 25 in your next message rather than stopping or asking the user what to do next. It is always safe to resend a chunk you already sent -- contacts with emails already in the CRM are skipped as duplicates, not double-added.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "first_name": {
+                          "type": "string"
+                        },
+                        "last_name": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "company": {
+                          "type": "string",
+                          "description": "Company name -- required per contact."
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "linkedin_url": {
+                          "type": "string"
+                        },
+                        "phone": {
+                          "type": "string"
+                        },
+                        "source": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "maxItems": 25
+                  },
+                  "source": {
+                    "type": "string",
+                    "description": "Default source label applied to any contact/company that doesn't specify its own 'source'. E.g. 'csv_import', 'apollo_import'."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Summary of the import: how many were created vs skipped, and why each skip happened. Always check 'remaining_hint' -- if it is present, more chunks are expected and you should continue immediately.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "created_count": {
+                      "type": "integer"
+                    },
+                    "skipped_count": {
+                      "type": "integer"
+                    },
+                    "created": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "skipped": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "remaining_hint": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Non-null when this call was sent at the 25-item cap, meaning your import likely has more rows left. When non-null, immediately send the next chunk of up to 25 contacts in a new call -- do not stop, and do not ask the user for permission to continue."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "contacts array is empty or missing."
+          }
+        }
+      }
     }
-  }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "Placeholder": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "description": "Unused placeholder schema (ChatGPT's Actions importer requires components.schemas to be a non-empty object)."
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ]
 }
